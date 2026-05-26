@@ -74,6 +74,7 @@ const ROOMIES_DATA = [
     tags:['비흡연','조용함','집순이'],
     desc:'서강대 22학번입니다. 조용하고 깔끔하게 지내실 분 구해요.',
     icon:'🐋', sleep:'normal', clean:'very', noise:'sensitive',
+    smoking:'no', // 정밀 매칭을 위한 흡연 속성 단일화
     pos:{ left:'60%', top:'52%' },
   },
   {
@@ -82,6 +83,7 @@ const ROOMIES_DATA = [
     tags:['비흡연','홈바디','취준생'],
     desc:'취준 중이라 집에 자주 있어요. 서로 존중하며 지내요.',
     icon:'🍏', sleep:'late', clean:'normal', noise:'normal',
+    smoking:'no', 
     pos:{ left:'26%', top:'36%' },
   },
   {
@@ -90,6 +92,7 @@ const ROOMIES_DATA = [
     tags:['여성전용','비흡연','대학원생'],
     desc:'대학원생이라 평일엔 늦게 들어와요. 주말엔 활발히 지내요.',
     icon:'💜', sleep:'late', clean:'normal', noise:'normal',
+    smoking:'no', 
     pos:{ left:'52%', top:'30%' },
   },
   {
@@ -98,6 +101,7 @@ const ROOMIES_DATA = [
     tags:['비흡연','밤형','조용함'],
     desc:'밤에 주로 게임하지만 이어폰 씁니다. 낮에는 조용해요.',
     icon:'🌤️', sleep:'late', clean:'normal', noise:'tolerant',
+    smoking:'yes', // 테스트 편의를 위해 흡연자 레이블 부여
     pos:{ left:'65%', top:'58%' },
   },
 ];
@@ -492,11 +496,24 @@ function submitPost(e) {
 }
 
 /* ====================================================
-   ROOMIES — 룸메이트 카드 그리드 렌더링
+   ROOMIES — 룸메이트 카드 그리드 렌더링 및 알고리즘 주입
 ==================================================== */
+
+// 호이스팅 에러 방지를 위한 공통 성향 다차원 가중치 상단 선언
+const SLEEP_SCORE_MAP = { 'early': 1, 'normal': 3, 'late': 5 };
+const CLEAN_SCORE_MAP = { 'very': 1,  'normal': 3, 'free': 5 };
+const NOISE_SCORE_MAP = { 'sensitive': 1, 'normal': 3, 'tolerant': 5 };
+const GUEST_SCORE_MAP = { 'rare': 1, 'sometimes': 3, 'often': 5 };
+
 function renderRoomiesGrid(data = ROOMIES_DATA) {
   document.getElementById('roomiesGrid').innerHTML = data.length
-    ? data.map(r => `
+    ? data.map(r => {
+        // 기존 desc 줄글 뒤에 개행(\n)을 넣고 궁합 점수를 실시간으로 덧붙여 출력
+        const finalDesc = r.matchScore 
+          ? `${r.desc}\n(궁합 점수: ${r.matchScore}점)` 
+          : r.desc;
+
+        return `
         <div class="roomie-card-full" onclick="openRoomieDetail(${r.id})">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
             <div class="avatar-lg">${r.icon}</div>
@@ -507,31 +524,77 @@ function renderRoomiesGrid(data = ROOMIES_DATA) {
           </div>
           <div style="font-size:15px;font-weight:700;margin-bottom:8px">월 ${r.budget}만원</div>
           <div class="roomie-tags">${renderTags(r.tags)}</div>
-          <p style="font-size:12px;color:var(--secondary);margin-top:10px;
-                    overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
-            ${r.desc}
+          
+          <p style="font-size:12px;color:var(--secondary);margin-top:10px; white-space: pre-line;
+                    overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">
+            ${finalDesc}
           </p>
         </div>
-      `).join('')
+      `}).join('')
     : `<p class="text-muted" style="grid-column:1/-1;padding:40px 0;text-align:center">
          조건에 맞는 룸메이트가 없습니다
        </p>`;
 }
 
-// 필터 적용
+// 지역·예산 조건 선택 후 L2-Norm 성향 벡터 연산 및 Order By 정렬 실행
 function applyRoomiesFilter() {
   const area   = document.getElementById('filterArea').value;
   const gender = document.getElementById('filterGender').value;
   const price  = document.getElementById('filterPrice').value;
   const style  = document.getElementById('filterStyle').value;
 
-  let result = [...ROOMIES_DATA];
-  if (area)   result = result.filter(r => r.area === area);
-  if (gender) result = result.filter(r => r.gender === gender);
-  if (price)  result = result.filter(r => r.budget <= parseInt(price));
-  if (style)  result = result.filter(r => r.style === style);
+  // 1단계: 조건 불일치 대상을 사전에 솎아내는 하드 필터링 (DB의 WHERE절 모사)
+  let filtered = [...ROOMIES_DATA];
+  if (area)   filtered = filtered.filter(r => r.area === area);
+  if (gender) filtered = filtered.filter(r => r.gender === gender);
+  if (price)  filtered = filtered.filter(r => r.budget <= parseInt(price));
+  if (style)  filtered = filtered.filter(r => r.style === style);
 
-  renderRoomiesGrid(result);
+  // 2단계: 축소된 데이터 매물을 타겟으로 다차원 유클리드 거리 제곱 연산 수행
+  const scoredResult = filtered.map(roomie => {
+    let distanceSquared = 0;
+
+    // ① 수면 취침 차원
+    const mySleep = SLEEP_SCORE_MAP[document.getElementById('compatSleep').value] || 3;
+    const targetSleep = SLEEP_SCORE_MAP[roomie.sleep] || 3;
+    distanceSquared += Math.pow(mySleep - targetSleep, 2);
+
+    // ② 주거 청결 차원
+    const myClean = CLEAN_SCORE_MAP[document.getElementById('compatClean').value] || 3;
+    const targetClean = CLEAN_SCORE_MAP[roomie.clean] || 3;
+    distanceSquared += Math.pow(myClean - targetClean, 2);
+
+    // ③ 생활 소음 차원
+    const myNoise = NOISE_SCORE_MAP[document.getElementById('compatNoise').value] || 3;
+    const targetNoise = NOISE_SCORE_MAP[roomie.noise] || 3;
+    distanceSquared += Math.pow(myNoise - targetNoise, 2);
+
+    // ④ 손님 초대 차원 (상대방 style 속성을 연동한 정밀 추론 기법 적용)
+    const myGuest = GUEST_SCORE_MAP[document.getElementById('compatGuest').value] || 1;
+    let targetGuest = 3;
+    if (roomie.style === 'homebody' || roomie.style === 'quiet') {
+      targetGuest = 1; 
+    }
+    distanceSquared += Math.pow(myGuest - targetGuest, 2);
+
+    // ⑤ 흡연 여부 차원 (DOM 셀렉트 박스 id="compatSmoking" 값과 객체 속성 다이렉트 매칭)
+    const mySmoking = document.getElementById('compatSmoking').value;
+    const targetSmoking = roomie.smoking || 'no';
+    if (mySmoking !== targetSmoking) {
+      distanceSquared += 16; // 불일치 크리티컬 발생 시 거리 최대치 증폭 패널티
+    }
+
+    // 만점 공간 80 기준 점수 정규화 및 소수점 첫째 자리 반올림
+    const maxDistanceSquared = 80;
+    let matchScore = (1 - (distanceSquared / maxDistanceSquared)) * 100;
+    matchScore = Math.max(0, Math.round(matchScore * 10) / 10);
+
+    return { ...roomie, matchScore };
+  });
+
+  // 3단계: 점수 기준 내림차순 실시간 정렬(Order By) 후 그리드 컴포넌트에 주입
+  scoredResult.sort((a, b) => b.matchScore - a.matchScore);
+  renderRoomiesGrid(scoredResult);
 }
 
 // 룸메이트 상세 (로그인 필요)
@@ -632,15 +695,17 @@ function switchTab(btn, tabId) {
 }
 
 /* ====================================================
-   MY PAGE SIDEBAR — 룸메궁합 분석
-   취침시간·청결도·소음민감도 조합으로 룸메 유형 분류
+   MY PAGE SIDEBAR — 룸메궁합 분석 결과 처리
 ==================================================== */
 function saveCompatProfile() {
   const sleep  = document.getElementById('compatSleep').value;
   const clean  = document.getElementById('compatClean').value;
   const noise  = document.getElementById('compatNoise').value;
 
-  // 간단 규칙 기반 유형 분류
+  // 실시간 다차원 정렬 계산 연쇄 트리거
+  applyRoomiesFilter();
+
+  // 기존 유형 분류 시뮬레이션 코드 원본 유지
   let emoji, type, desc;
   if (clean === 'very' && noise === 'sensitive') {
     emoji = '✨'; type = '청결 민감형';
@@ -656,9 +721,16 @@ function saveCompatProfile() {
     desc  = '다양한 성향과 두루 잘 어울리는 유연한 타입이에요.';
   }
 
+  // 전체 매물 리스트 중 벡터 계산 결과 상 최상단에 정렬된 상대의 최고 매칭 점수 파싱
+  let displayScore = 100;
+  if (ROOMIES_DATA.length > 0) {
+    displayScore = Math.max(...ROOMIES_DATA.map(r => r.matchScore || 0));
+  }
+
   document.getElementById('compatBadge').textContent = emoji;
   document.getElementById('compatType').textContent  = type;
-  document.getElementById('compatDesc').textContent  = desc;
+  
+  document.getElementById('compatDesc').innerHTML = `${desc}<br>(최고 궁합 점수: ${displayScore}점)`;
   document.getElementById('compatResults').classList.remove('hidden');
 
   // 2초 후 룸메이트 페이지로 이동
