@@ -26,7 +26,6 @@
 
     <div class="nav-right">
       <a href="#map"     class="nav-link" data-page="map">&#128205; Map</a>
-      <a href="#"        class="nav-link" id="chatBtn">&#128172; chat</a>
       <a href="#takeon"  class="nav-link" data-page="takeon">take on</a>
       <a href="#board"   class="nav-link" data-page="board">communities</a>
       <a href="#roomies" class="nav-link" data-page="roomies">&#128101; roomies</a>
@@ -330,27 +329,6 @@
         이미 계정이 있으신가요?
         <button class="link-btn" onclick="switchModal('register','login')">로그인</button>
       </p>
-    </div>
-  </div>
-
-  <!-- ====================================================
-       MODAL: 채팅 (1:1 메시지, 로그인 필요)
-  ==================================================== -->
-  <div id="modal-chat" class="modal hidden">
-    <div class="modal-backdrop" onclick="closeModal('chat')"></div>
-    <div class="modal-box chat-box">
-      <div class="chat-header">
-        <button onclick="closeModal('chat')">&#8592;</button>
-        <h3 id="chatTitle">채팅</h3>
-      </div>
-      <div class="chat-messages" id="chatMessages">
-        <p class="chat-empty">메시지를 시작해보세요</p>
-      </div>
-      <div class="chat-input-row">
-        <input type="text" id="chatInput" placeholder="메시지 입력..."
-               onkeydown="if(event.key==='Enter')sendChatMessage()" />
-        <button onclick="sendChatMessage()">전송</button>
-      </div>
     </div>
   </div>
 

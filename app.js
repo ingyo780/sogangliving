@@ -511,11 +511,6 @@ function renderRoomiesGrid(data = ROOMIES_DATA) {
                     overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
             ${r.desc}
           </p>
-          <!-- 채팅: 로그인 필요 -->
-          <button class="btn-outline" style="width:100%;margin-top:12px;padding:9px"
-                  onclick="event.stopPropagation();openChatWith('${r.name}')">
-            💬 채팅하기
-          </button>
         </div>
       `).join('')
     : `<p class="text-muted" style="grid-column:1/-1;padding:40px 0;text-align:center">
@@ -625,51 +620,6 @@ function submitTakeon(e) {
 }
 
 /* ====================================================
-   CHAT — 1:1 채팅 (로그인 필요)
-==================================================== */
-
-// 특정 룸메이트와 채팅 시작
-function openChatWith(name) {
-  requireLogin(() => {
-    document.getElementById('chatTitle').textContent = `${name}과(와) 채팅`;
-    document.getElementById('chatMessages').innerHTML =
-      '<p class="chat-empty">메시지를 시작해보세요</p>';
-    openModal('chat');
-  });
-}
-
-// 메시지 전송
-function sendChatMessage() {
-  const input = document.getElementById('chatInput');
-  const msg   = input.value.trim();
-  if (!msg) return;
-
-  const container = document.getElementById('chatMessages');
-  // 첫 메시지 시 안내 문구 제거
-  const empty = container.querySelector('.chat-empty');
-  if (empty) empty.remove();
-
-  // 내 메시지 추가
-  container.insertAdjacentHTML('beforeend', `
-    <div class="chat-msg-me">
-      <span class="chat-bubble">${msg}</span>
-    </div>
-  `);
-  input.value = '';
-  container.scrollTop = container.scrollHeight;
-
-  // 자동 답장 시뮬레이션 (실 서비스에서는 소켓 통신)
-  setTimeout(() => {
-    container.insertAdjacentHTML('beforeend', `
-      <div class="chat-msg-them">
-        <span class="chat-bubble">안녕하세요! 연락 주셔서 감사합니다 😊</span>
-      </div>
-    `);
-    container.scrollTop = container.scrollHeight;
-  }, 900);
-}
-
-/* ====================================================
    MY PAGE SIDEBAR — 탭 전환
 ==================================================== */
 function switchTab(btn, tabId) {
@@ -744,15 +694,6 @@ function init() {
   document.getElementById('heroSignin').addEventListener('click',  () => openModal('login'));
   document.getElementById('heroRegister').addEventListener('click',() => openModal('register'));
   document.getElementById('mypageBtn').addEventListener('click',   openSidebar);
-
-  // chat 버튼: 로그인 필요
-  document.getElementById('chatBtn').addEventListener('click', e => {
-    e.preventDefault();
-    requireLogin(() => {
-      document.getElementById('chatTitle').textContent = '채팅';
-      openModal('chat');
-    });
-  });
 
   // 검색바 Enter 키
   document.getElementById('searchInput').addEventListener('keydown', e => {
