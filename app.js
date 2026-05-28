@@ -508,32 +508,39 @@ const GUEST_SCORE_MAP = { 'rare': 1, 'sometimes': 3, 'often': 5 };
 function renderRoomiesGrid(data = ROOMIES_DATA) {
   document.getElementById('roomiesGrid').innerHTML = data.length
     ? data.map(r => {
-        // 기존 desc 줄글 뒤에 개행(\n)을 넣고 궁합 점수를 실시간으로 덧붙여 출력
-        const finalDesc = r.matchScore 
-          ? `${r.desc}\n(궁합 점수: ${r.matchScore}점)` 
-          : r.desc;
+        // 📍 1. 사용자가 마이페이지에서 매칭을 돌렸을 때만 점수 뱃지 HTML을 생성합니다.
+        // 초기 화면(점수가 없을 때)에는 빈 문자열('')이 되어 아무것도 안 뜹니다.
+        const scoreBadge = (r.matchScore !== undefined && r.matchScore !== null)
+          ? `<div style="background: #22c55e; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;">
+               궁합 ${r.matchScore}점
+             </div>`
+          : '';
 
         return `
         <div class="roomie-card-full" onclick="openRoomieDetail(${r.id})">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <div class="avatar-lg">${r.icon}</div>
-            <div>
-              <div style="font-weight:600;font-size:14px">${r.name}</div>
-              <div style="font-size:12px;color:var(--secondary)">${r.location}</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
+            <div style="display:flex; align-items:center; gap:10px">
+              <div class="avatar-lg">${r.icon}</div>
+              <div>
+                <div style="font-weight:600; font-size:14px">${r.name}</div>
+                <div style="font-size:12px; color:var(--secondary)">${r.location}</div>
+              </div>
             </div>
           </div>
-          <div style="font-size:15px;font-weight:700;margin-bottom:8px">월 ${r.budget}만원</div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size:15px; font-weight:700;">월 ${r.budget}만원</div>
+            ${scoreBadge} </div>
+
           <div class="roomie-tags">${renderTags(r.tags)}</div>
           
-          <p style="font-size:12px;color:var(--secondary);margin-top:10px; white-space: pre-line;
-                    overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">
-            ${finalDesc}
+          <p style="font-size:12px; color:var(--secondary); margin-top:10px;
+                    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical">
+            ${r.desc}
           </p>
         </div>
       `}).join('')
-    : `<p class="text-muted" style="grid-column:1/-1;padding:40px 0;text-align:center">
-         조건에 맞는 룸메이트가 없습니다
-       </p>`;
+    : `<p class="text-muted" style="grid-column:1/-1; padding:40px 0; text-align:center">조건에 맞는 룸메이트가 없습니다</p>`;
 }
 
 // 지역·예산 조건 선택 후 L2-Norm 성향 벡터 연산 및 Order By 정렬 실행
