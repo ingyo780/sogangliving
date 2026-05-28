@@ -743,7 +743,7 @@ function saveCompatProfile() {
   // 2초 후 룸메이트 페이지로 이동
   setTimeout(() => {
     closeSidebar();
-    location.hash = 'roomies';
+    // location.hash = 'roomies';
   }, 2000);
 }
 
