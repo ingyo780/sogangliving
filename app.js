@@ -559,7 +559,7 @@ function applyRoomiesFilter() {
   if (gender) result = result.filter(r => r.gender === gender);
   if (price)  result = result.filter(r => r.budget <= parseInt(price));
   if (style)  result = result.filter(r => r.style === style);
-
+  filtered.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
   renderRoomiesGrid(result);
 }
 
