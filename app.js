@@ -74,7 +74,6 @@ const ROOMIES_DATA = [
     tags:['비흡연','조용함','집순이'],
     desc:'서강대 22학번입니다. 조용하고 깔끔하게 지내실 분 구해요.',
     icon:'🐋', sleep:'normal', clean:'very', noise:'sensitive',
-    smoking:'no', 
     pos:{ left:'60%', top:'52%' },
   },
   {
@@ -83,7 +82,6 @@ const ROOMIES_DATA = [
     tags:['비흡연','홈바디','취준생'],
     desc:'취준 중이라 집에 자주 있어요. 서로 존중하며 지내요.',
     icon:'🍏', sleep:'late', clean:'normal', noise:'normal',
-    smoking:'no', 
     pos:{ left:'26%', top:'36%' },
   },
   {
@@ -92,7 +90,6 @@ const ROOMIES_DATA = [
     tags:['여성전용','비흡연','대학원생'],
     desc:'대학원생이라 평일엔 늦게 들어와요. 주말엔 활발히 지내요.',
     icon:'💜', sleep:'late', clean:'normal', noise:'normal',
-    smoking:'no', 
     pos:{ left:'52%', top:'30%' },
   },
   {
@@ -101,7 +98,6 @@ const ROOMIES_DATA = [
     tags:['비흡연','밤형','조용함'],
     desc:'밤에 주로 게임하지만 이어폰 씁니다. 낮에는 조용해요.',
     icon:'🌤️', sleep:'late', clean:'normal', noise:'tolerant',
-    smoking:'yes', 
     pos:{ left:'65%', top:'58%' },
   },
 ];
@@ -146,34 +142,41 @@ const POSTS_DATA = [
    유틸 함수
 ==================================================== */
 
+// 날짜 문자열 → M/D 포맷
 function fmtDate(str) {
   const d = new Date(str);
   return `${d.getMonth()+1}/${d.getDate()}`;
 }
 
+// 로그인 여부 확인
 function isLoggedIn() { return state.user !== null; }
 
+// 로그인이 필요한 액션: 미로그인 시 로그인 모달 오픈
 function requireLogin(fn) {
   if (!isLoggedIn()) { openModal('login'); return; }
   fn();
 }
 
+// 태그 뱃지 HTML 생성
 function renderTags(tags) {
   return tags.map(t => `<span class="tag">${t}</span>`).join('');
 }
 
 /* ====================================================
    해시 기반 페이지 라우터
+   URL 해시(#map, #board 등)에 따라 페이지 전환
 ==================================================== */
 function navigateTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById(`page-${page}`);
   if (target) target.classList.add('active');
 
+  // 네비 링크 활성 표시
   document.querySelectorAll('.nav-link[data-page]').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
 
+  // 지도 페이지 진입 시 목록·마커 렌더
   if (page === 'map') { renderMapList(); renderMapMarkers(); }
 }
 
@@ -196,10 +199,12 @@ function closeSidebar() { document.getElementById('sidebar-mypage').classList.ad
    인증 처리
 ==================================================== */
 
+// 서강대 이메일 검증 (@sogang.ac.kr 만 허용)
 function isSogangEmail(email) {
   return email.trim().endsWith('@sogang.ac.kr');
 }
 
+// 로그인 폼 제출 핸들러
 function handleLogin(e) {
   e.preventDefault();
   const email    = document.getElementById('loginEmail').value;
@@ -216,24 +221,29 @@ function handleLogin(e) {
   }
 
   errEl.classList.add('hidden');
+  // 실제 서비스에서는 서버 인증 API 호출
   loginUser({ email, nickname: email.split('@')[0] });
   closeModal('login');
   document.getElementById('loginForm').reset();
 }
 
+// 이메일 인증 코드 발송 (서버 미연동: 콘솔 출력으로 시뮬레이션)
 function sendVerification() {
   const email = document.getElementById('regEmail').value;
   if (!isSogangEmail(email)) {
     alert('서강대학교 이메일(@sogang.ac.kr)만 사용 가능합니다.');
     return;
   }
+  // 6자리 랜덤 코드 생성
   state.verifyCode = String(Math.floor(100000 + Math.random() * 900000));
   document.getElementById('verifyCodeGroup').style.display = 'block';
 
+  // 개발 환경: 코드를 콘솔에서 확인 (실 서버 구현 시 이메일로 발송)
   console.info('[인증코드 개발용]', state.verifyCode);
   alert(`${email} 으로 인증 코드를 발송했습니다.\n(개발 환경: 브라우저 콘솔에서 확인)`);
 }
 
+// 인증 코드 일치 여부 확인
 function checkVerification() {
   const input = document.getElementById('verifyCode').value.trim();
   if (input === state.verifyCode) {
@@ -244,6 +254,7 @@ function checkVerification() {
   }
 }
 
+// 회원가입 폼 제출 핸들러
 function handleRegister(e) {
   e.preventDefault();
   const email    = document.getElementById('regEmail').value;
@@ -260,24 +271,29 @@ function handleRegister(e) {
   }
 
   errEl.classList.add('hidden');
+  // 실제 서비스에서는 서버 회원가입 API 호출
   loginUser({ email, nickname });
   closeModal('register');
   document.getElementById('registerForm').reset();
   document.getElementById('verifyCodeGroup').style.display = 'none';
 }
 
+// 폼 에러 표시 헬퍼
 function showFormError(el, msg) {
   el.textContent = msg;
   el.classList.remove('hidden');
 }
 
+// 로그인 성공 후 UI 상태 전환
 function loginUser(user) {
   state.user = user;
 
+  // 네비: Sign in/Register → 아바타 버튼
   document.getElementById('authButtons').classList.add('hidden');
   document.getElementById('userButtons').classList.remove('hidden');
   document.getElementById('navUsername').textContent = user.nickname;
 
+  // 히어로 섹션: 맞춤 인사로 교체
   document.getElementById('heroTitle').textContent = `안녕하세요, ${user.nickname}님!`;
   document.getElementById('heroSubtitle').textContent = '오늘도 좋은 자취 생활 되세요 🏠';
   document.getElementById('heroBtns').innerHTML = `
@@ -285,10 +301,12 @@ function loginUser(user) {
     <button class="btn-outline-lg" onclick="location.hash='roomies'">룸메 찾기</button>
   `;
 
+  // 마이페이지 프로필 채우기
   document.getElementById('mypageName').textContent  = user.nickname;
   document.getElementById('mypageEmail').textContent = user.email;
 }
 
+// 로그아웃: 상태 초기화 + UI 복원
 function logout() {
   state.user = null;
 
@@ -306,7 +324,7 @@ function logout() {
 }
 
 /* ====================================================
-   HOME — 미리보기 렌더링 구역
+   HOME — 인수인계 미리보기 카드 렌더링
 ==================================================== */
 function renderTakeonPreview() {
   document.getElementById('takeonPreview').innerHTML =
@@ -325,6 +343,9 @@ function renderTakeonPreview() {
     `).join('');
 }
 
+/* ====================================================
+   HOME — 실거주 후기 Quote 카드 렌더링 (익명 게시글 기반)
+==================================================== */
 function renderReviewsPreview() {
   const reviews = POSTS_DATA.filter(p => p.cat === 'review').slice(0, 3);
   document.getElementById('reviewsPreview').innerHTML =
@@ -342,6 +363,9 @@ function renderReviewsPreview() {
     `).join('');
 }
 
+/* ====================================================
+   HOME — 룸메이트 미리보기 카드 렌더링
+==================================================== */
 function renderRoomiesPreview() {
   document.getElementById('roomiesPreview').innerHTML =
     ROOMIES_DATA.map(r => `
@@ -361,7 +385,7 @@ function renderRoomiesPreview() {
 }
 
 /* ====================================================
-   MAP — 지도 모드 및 마커 제어
+   MAP — 지도 모드 토글 (매물 ↔ 룸메)
 ==================================================== */
 function setMapMode(mode) {
   state.mapMode = mode;
@@ -371,6 +395,7 @@ function setMapMode(mode) {
   renderMapMarkers();
 }
 
+// 지도 오른쪽 목록 사이드바 렌더링
 function renderMapList() {
   const data = state.mapMode === 'properties' ? TAKEON_DATA : ROOMIES_DATA;
   document.getElementById('mapList').innerHTML = data.map(item =>
@@ -394,6 +419,7 @@ function renderMapList() {
   ).join('');
 }
 
+// 지도 위에 가격 마커 배치 (퍼센트 좌표 — 실제 API 연동 시 위경도로 교체)
 function renderMapMarkers() {
   const data = state.mapMode === 'properties' ? TAKEON_DATA : ROOMIES_DATA;
   document.getElementById('mapMarkers').innerHTML = data.map(item => {
@@ -405,7 +431,7 @@ function renderMapMarkers() {
 }
 
 /* ====================================================
-   BOARD — 익명 커뮤니티 게시판
+   BOARD — 게시글 목록 렌더링
 ==================================================== */
 function renderBoard(cat = 'all') {
   const catLabel = { review:'후기', question:'질문', tip:'꿀팁' };
@@ -426,6 +452,7 @@ function renderBoard(cat = 'all') {
   `).join('');
 }
 
+// 카테고리 탭 클릭 — 버튼 활성화 + 목록 필터
 function filterBoard(btn, cat) {
   state.boardCat = cat;
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
@@ -433,6 +460,7 @@ function filterBoard(btn, cat) {
   renderBoard(cat);
 }
 
+// 게시글 열기 (로그인 필요)
 function openPost(id) {
   requireLogin(() => {
     const p = POSTS_DATA.find(x => x.id === id);
@@ -441,11 +469,12 @@ function openPost(id) {
   });
 }
 
+// 글쓰기 버튼 — 로그인 필요
 function openWritePost() {
   requireLogin(() => openModal('writepost'));
 }
 
-// 게시글 제출
+// 게시글 제출 — 목록 맨 앞에 추가
 function submitPost(e) {
   e.preventDefault();
   const newPost = {
@@ -463,72 +492,49 @@ function submitPost(e) {
 }
 
 /* ====================================================
-   ROOMIES — 룸메이트 매칭 핵심 로직 구역
+   ROOMIES — 룸메이트 카드 그리드 렌더링
 ==================================================== */
-
-// 역산 다차원 벡터 상수 맵 상단 선언 (호이스팅 세이프티)
-const SLEEP_SCORE_MAP = { 'early': 1, 'normal': 3, 'late': 5 };
-const CLEAN_SCORE_MAP = { 'very': 1,  'normal': 3, 'free': 5 };
-const NOISE_SCORE_MAP = { 'sensitive': 1, 'normal': 3, 'tolerant': 5 };
-const GUEST_SCORE_MAP = { 'rare': 1, 'sometimes': 3, 'often': 5 };
-
 function renderRoomiesGrid(data = ROOMIES_DATA) {
   document.getElementById('roomiesGrid').innerHTML = data.length
-    ? data.map(r => {
-        // 사용자가 성향 매칭을 한번 돌렸을 때만 초록색 궁합 뱃지 UI 빌드 (0점 노출 차단 방어막 우회)
-        const scoreBadge = (r.matchScore !== undefined && r.matchScore !== null)
-          ? `<div style="background: #22c55e; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;">
-               궁합 ${r.matchScore}점
-             </div>`
-          : '';
-
-        return `
+    ? data.map(r => `
         <div class="roomie-card-full" onclick="openRoomieDetail(${r.id})">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
-            <div style="display:flex; align-items:center; gap:10px">
-              <div class="avatar-lg">${r.icon}</div>
-              <div>
-                <div style="font-weight:600; font-size:14px">${r.name}</div>
-                <div style="font-size:12px; color:var(--secondary)">${r.location}</div>
-              </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="avatar-lg">${r.icon}</div>
+            <div>
+              <div style="font-weight:600;font-size:14px">${r.name}</div>
+              <div style="font-size:12px;color:var(--secondary)">${r.location}</div>
             </div>
           </div>
-          
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-size:15px; font-weight:700;">월 ${r.budget}만원</div>
-            ${scoreBadge} 
-          </div>
-
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px">월 ${r.budget}만원</div>
           <div class="roomie-tags">${renderTags(r.tags)}</div>
-          
-          <p style="font-size:12px; color:var(--secondary); margin-top:10px;
-                    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical">
+          <p style="font-size:12px;color:var(--secondary);margin-top:10px;
+                    overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
             ${r.desc}
           </p>
         </div>
-      `}).join('')
-    : `<p class="text-muted" style="grid-column:1/-1; padding:40px 0; text-align:center">조건에 맞는 룸메이트가 없습니다</p>`;
+      `).join('')
+    : `<p class="text-muted" style="grid-column:1/-1;padding:40px 0;text-align:center">
+         조건에 맞는 룸메이트가 없습니다
+       </p>`;
 }
 
-// 메인 화면 검색 필터 조건 매핑 및 실시간 내림차순 정렬 기능 담당
+// 필터 적용
 function applyRoomiesFilter() {
   const area   = document.getElementById('filterArea').value;
   const gender = document.getElementById('filterGender').value;
   const price  = document.getElementById('filterPrice').value;
   const style  = document.getElementById('filterStyle').value;
 
-  let filtered = [...ROOMIES_DATA];
-  if (area)   filtered = filtered.filter(r => r.area === area);
-  if (gender) filtered = filtered.filter(r => r.gender === gender);
-  if (price)  filtered = filtered.filter(r => r.budget <= parseInt(price));
-  if (style)  filtered = filtered.filter(r => r.style === style);
+  let result = [...ROOMIES_DATA];
+  if (area)   result = result.filter(r => r.area === area);
+  if (gender) result = result.filter(r => r.gender === gender);
+  if (price)  result = result.filter(r => r.budget <= parseInt(price));
+  if (style)  result = result.filter(r => r.style === style);
 
-  // 이미 마이페이지 연산기에서 원본 객체에 발라둔 matchScore 기준 실시간 정렬(Order By)만 가볍게 수행
-  filtered.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-  
-  renderRoomiesGrid(filtered);
+  renderRoomiesGrid(result);
 }
 
+// 룸메이트 상세 (로그인 필요)
 function openRoomieDetail(id) {
   requireLogin(() => {
     const r = ROOMIES_DATA.find(x => x.id === id);
@@ -537,6 +543,7 @@ function openRoomieDetail(id) {
   });
 }
 
+// 룸메궁합 버튼 → 마이페이지 사이드바 오픈 (로그인 필요)
 function showCompatibility() {
   requireLogin(() => openSidebar());
 }
@@ -565,6 +572,7 @@ function renderTakeonGrid(data = TAKEON_DATA) {
   `).join('');
 }
 
+// 지역·방 종류 필터
 function applyTakeonFilter() {
   const area = document.getElementById('takeonArea').value;
   const type = document.getElementById('takeonType').value;
@@ -574,6 +582,7 @@ function applyTakeonFilter() {
   renderTakeonGrid(result);
 }
 
+// 인수인계 상세 (로그인 필요)
 function openTakeonDetail(id) {
   requireLogin(() => {
     const item = TAKEON_DATA.find(x => x.id === id);
@@ -582,10 +591,12 @@ function openTakeonDetail(id) {
   });
 }
 
+// 인수인계 등록 버튼 (로그인 필요)
 function openWriteTakeon() {
   requireLogin(() => openModal('writetakeon'));
 }
 
+// 인수인계 폼 제출 — 목록 맨 앞에 추가
 function submitTakeon(e) {
   e.preventDefault();
   const newItem = {
@@ -609,61 +620,27 @@ function submitTakeon(e) {
 }
 
 /* ====================================================
-   MY PAGE SIDEBAR — 내부 탭 제어
+   MY PAGE SIDEBAR — 탭 전환
 ==================================================== */
 function switchTab(btn, tabId) {
+  // 탭 버튼 활성화
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  // 탭 콘텐츠 전환
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
 }
 
 /* ====================================================
-   MY PAGE SIDEBAR — 룸메궁합 다차원 행렬 연산 처리기 (교정 완료)
+   MY PAGE SIDEBAR — 룸메궁합 분석
+   취침시간·청결도·소음민감도 조합으로 룸메 유형 분류
 ==================================================== */
 function saveCompatProfile() {
-  const sleep = document.getElementById('compatSleep').value;
-  const clean = document.getElementById('compatClean').value;
-  const noise = document.getElementById('compatNoise').value;
-  const guest = document.getElementById('compatGuest').value;
-  const smoking = document.getElementById('compatSmoking').value;
+  const sleep  = document.getElementById('compatSleep').value;
+  const clean  = document.getElementById('compatClean').value;
+  const noise  = document.getElementById('compatNoise').value;
 
-  // 1. 메인 검색 필터값 유무와 독립적으로 전역 룸메이트 DB 데이터 풀에 L2-Norm 성향 점수 직접 계산 및 축적
-  ROOMIES_DATA.forEach(roomie => {
-    let distanceSquared = 0;
-
-    const mySleep = SLEEP_SCORE_MAP[sleep] || 3;
-    const targetSleep = SLEEP_SCORE_MAP[roomie.sleep] || 3;
-    distanceSquared += Math.pow(mySleep - targetSleep, 2);
-
-    const myClean = CLEAN_SCORE_MAP[clean] || 3;
-    const targetClean = CLEAN_SCORE_MAP[roomie.clean] || 3;
-    distanceSquared += Math.pow(myClean - targetClean, 2);
-
-    const myNoise = NOISE_SCORE_MAP[noise] || 3;
-    const targetNoise = NOISE_SCORE_MAP[roomie.noise] || 3;
-    distanceSquared += Math.pow(myNoise - targetNoise, 2);
-
-    const myGuest = GUEST_SCORE_MAP[guest] || 1;
-    let targetGuest = 3;
-    if (roomie.style === 'homebody' || roomie.style === 'quiet') {
-      targetGuest = 1; 
-    }
-    distanceSquared += Math.pow(myGuest - targetGuest, 2);
-
-    if (smoking !== (roomie.smoking || 'no')) {
-      distanceSquared += 16; 
-    }
-
-    const maxDistanceSquared = 80;
-    let matchScore = (1 - (distanceSquared / maxDistanceSquared)) * 100;
-    roomie.matchScore = Math.max(0, Math.round(matchScore * 10) / 10); 
-  });
-
-  // 2. 점수가 제대로 바인딩된 온전한 데이터 풀에서 진짜 최고 매칭 점수 파싱
-  const displayScore = Math.max(...ROOMIES_DATA.map(r => r.matchScore || 0));
-
-  // 3. 정적 규칙 기반 유형 성향 분류 (원본 기획 유지)
+  // 간단 규칙 기반 유형 분류
   let emoji, type, desc;
   if (clean === 'very' && noise === 'sensitive') {
     emoji = '✨'; type = '청결 민감형';
@@ -679,56 +656,53 @@ function saveCompatProfile() {
     desc  = '다양한 성향과 두루 잘 어울리는 유연한 타입이에요.';
   }
 
-  // 4. 마이페이지 결과 노출창 내부 innerHTML 바인딩 고도화 (0점 버그 원천 진압 완료)
   document.getElementById('compatBadge').textContent = emoji;
   document.getElementById('compatType').textContent  = type;
-  document.getElementById('compatDesc').innerHTML = `${desc}<br>(최고 궁합 점수: ${displayScore}점)`;
-  
+  document.getElementById('compatDesc').textContent  = desc;
   document.getElementById('compatResults').classList.remove('hidden');
 
-  // 5. 점수가 업데이트되었으므로 메인 룸메이트 그리드를 최고 점수 순서로 동기화 재정렬 처리
-  ROOMIES_DATA.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-  renderRoomiesGrid(ROOMIES_DATA);
-
-  // 6. 사이더바 퇴장 딜레이 트리거
+  // 2초 후 룸메이트 페이지로 이동
   setTimeout(() => {
     closeSidebar();
-  }, 1500);
+    location.hash = 'roomies';
+  }, 2000);
 }
 
 /* ====================================================
-   초기화 — DOMContentLoaded (렌더링 순서 패치 완료)
+   초기화 — DOMContentLoaded
 ==================================================== */
 function init() {
+  // 홈 화면 콘텐츠 렌더
   renderTakeonPreview();
   renderReviewsPreview();
   renderRoomiesPreview();
 
+  // 각 페이지 초기 렌더
   renderBoard();
-  
-  // 📍 [주범 진압 완료] 기존 renderRoomiesGrid() 대신 필터 정렬 함수를 호출합니다.
-  // 이렇게 해놓아야 첫 사이트 접속이나 재접속 시에도 점수 정렬 파이프라인을 타고 화면을 이쁘게 채워넣습니다.
-  applyRoomiesFilter(); 
-  
+  renderRoomiesGrid();
   renderTakeonGrid();
   renderMapList();
   renderMapMarkers();
 
+  // 해시 라우팅 이벤트
   window.addEventListener('hashchange', handleRoute);
   handleRoute();
 
+  // 네비 버튼 이벤트
   document.getElementById('signinBtn').addEventListener('click',   () => openModal('login'));
   document.getElementById('registerBtn').addEventListener('click', () => openModal('register'));
   document.getElementById('heroSignin').addEventListener('click',  () => openModal('login'));
   document.getElementById('heroRegister').addEventListener('click',() => openModal('register'));
   document.getElementById('mypageBtn').addEventListener('click',   openSidebar);
 
+  // 검색바 Enter 키
   document.getElementById('searchInput').addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     const q = e.target.value.trim();
     if (q) alert(`"${q}" 검색 기능은 서버 연동 후 사용 가능합니다.`);
   });
 
+  // 카카오맵 API 키가 있으면 지도 초기화
   if (KAKAO_MAP_KEY) {
     const script = document.createElement('script');
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&autoload=false`;
