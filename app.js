@@ -550,33 +550,29 @@ function applyRoomiesFilter() {
   const price  = document.getElementById('filterPrice').value;
   const style  = document.getElementById('filterStyle').value;
 
-  // 1단계: 조건 불일치 대상을 사전에 솎아내는 하드 필터링 (DB의 WHERE절 모사)
+  // 1단계: 하드 조건 필터링
   let filtered = [...ROOMIES_DATA];
   if (area)   filtered = filtered.filter(r => r.area === area);
   if (gender) filtered = filtered.filter(r => r.gender === gender);
   if (price)  filtered = filtered.filter(r => r.budget <= parseInt(price));
   if (style)  filtered = filtered.filter(r => r.style === style);
 
-  // 2단계: 축소된 데이터 매물을 타겟으로 다차원 유클리드 거리 제곱 연산 수행
+  // 2단계: L2-Norm 성향 점수 산출 (scoredResult에 축적)
   const scoredResult = filtered.map(roomie => {
     let distanceSquared = 0;
 
-    // ① 수면 취침 차원
     const mySleep = SLEEP_SCORE_MAP[document.getElementById('compatSleep').value] || 3;
     const targetSleep = SLEEP_SCORE_MAP[roomie.sleep] || 3;
     distanceSquared += Math.pow(mySleep - targetSleep, 2);
 
-    // ② 주거 청결 차원
     const myClean = CLEAN_SCORE_MAP[document.getElementById('compatClean').value] || 3;
     const targetClean = CLEAN_SCORE_MAP[roomie.clean] || 3;
     distanceSquared += Math.pow(myClean - targetClean, 2);
 
-    // ③ 생활 소음 차원
     const myNoise = NOISE_SCORE_MAP[document.getElementById('compatNoise').value] || 3;
     const targetNoise = NOISE_SCORE_MAP[roomie.noise] || 3;
     distanceSquared += Math.pow(myNoise - targetNoise, 2);
 
-    // ④ 손님 초대 차원 (상대방 style 속성을 연동한 정밀 추론 기법 적용)
     const myGuest = GUEST_SCORE_MAP[document.getElementById('compatGuest').value] || 1;
     let targetGuest = 3;
     if (roomie.style === 'homebody' || roomie.style === 'quiet') {
@@ -584,20 +580,22 @@ function applyRoomiesFilter() {
     }
     distanceSquared += Math.pow(myGuest - targetGuest, 2);
 
-    // ⑤ 흡연 여부 차원 (DOM 셀렉트 박스 id="compatSmoking" 값과 객체 속성 다이렉트 매칭)
     const mySmoking = document.getElementById('compatSmoking').value;
     const targetSmoking = roomie.smoking || 'no';
     if (mySmoking !== targetSmoking) {
-      distanceSquared += 16; // 불일치 크리티컬 발생 시 거리 최대치 증폭 패널티
+      distanceSquared += 16; 
     }
-
-    // 만점 공간 80 기준 점수 정규화 및 소수점 첫째 자리 반올림
     const maxDistanceSquared = 80;
     let matchScore = (1 - (distanceSquared / maxDistanceSquared)) * 100;
     matchScore = Math.max(0, Math.round(matchScore * 10) / 10);
-
     return { ...roomie, matchScore };
   });
+
+  // 3단계: 점수 기준 정렬
+  scoredResult.sort((a, b) => b.matchScore - a.matchScore);
+  // 📍 [핵심 교정부] filtered 대신 점수(matchScore)가 확실하게 박힌 'scoredResult'를 주입합니다.
+  renderRoomiesGrid(scoredResult); 
+}
 
   // 3단계: 점수 기준 내림차순 실시간 정렬(Order By) 후 그리드 컴포넌트에 주입
   scoredResult.sort((a, b) => b.matchScore - a.matchScore);
