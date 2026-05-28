@@ -11,6 +11,15 @@ const KAKAO_MAP_KEY = '';
 /* ====================================================
    앱 전역 상태
 ==================================================== */
+
+// [추가 Block 1] 유클리드 거리 연산용 5차원 좌표 매핑 테이블
+const COMPAT_SCORE_MAP = {
+  sleep:   { early: 1, normal: 2, late: 3 },
+  clean:   { very: 1,  normal: 2, free: 3 },
+  noise:   { sensitive: 1, normal: 2, tolerant: 3 },
+  guest:   { rare: 1, sometimes: 2, often: 3 },
+  smoking: { yes: 1,   no: 3 }
+};
 const state = {
   user:       null,          // 로그인한 사용자 { email, nickname }
   mapMode:    'properties',  // 지도 모드: 'properties' | 'roomies'
@@ -67,13 +76,16 @@ const TAKEON_DATA = [
 /* ====================================================
    샘플 데이터 — 룸메이트 구인
 ==================================================== */
+// 📍 [변경 Block 2] 성향 확장 및 matchScore: null 플래그 장착
 const ROOMIES_DATA = [
   {
     id:1, area:'마포', location:'마포구 노고산동 투룸',
     name:'고래 박하', budget:80, gender:'female', style:'quiet',
     tags:['비흡연','조용함','집순이'],
     desc:'서강대 22학번입니다. 조용하고 깔끔하게 지내실 분 구해요.',
-    icon:'🐋', sleep:'normal', clean:'very', noise:'sensitive',
+    icon:'🐋', 
+    sleep:'normal', clean:'very', noise:'sensitive', smoking:'no', guest:'rare', // 성향 5개
+    matchScore: null, // 초기 진입 시 숨김 처리용 플래그
     pos:{ left:'60%', top:'52%' },
   },
   {
@@ -81,7 +93,9 @@ const ROOMIES_DATA = [
     name:'초록 사과', budget:50, gender:'male', style:'homebody',
     tags:['비흡연','홈바디','취준생'],
     desc:'취준 중이라 집에 자주 있어요. 서로 존중하며 지내요.',
-    icon:'🍏', sleep:'late', clean:'normal', noise:'normal',
+    icon:'🍏', 
+    sleep:'late', clean:'normal', noise:'normal', smoking:'no', guest:'sometimes',
+    matchScore: null,
     pos:{ left:'26%', top:'36%' },
   },
   {
@@ -89,7 +103,9 @@ const ROOMIES_DATA = [
     name:'라벤더', budget:70, gender:'female', style:'active',
     tags:['여성전용','비흡연','대학원생'],
     desc:'대학원생이라 평일엔 늦게 들어와요. 주말엔 활발히 지내요.',
-    icon:'💜', sleep:'late', clean:'normal', noise:'normal',
+    icon:'💜', 
+    sleep:'late', clean:'normal', noise:'normal', smoking:'no', guest:'often',
+    matchScore: null,
     pos:{ left:'52%', top:'30%' },
   },
   {
@@ -97,11 +113,12 @@ const ROOMIES_DATA = [
     name:'파란 하늘', budget:45, gender:'male', style:'quiet',
     tags:['비흡연','밤형','조용함'],
     desc:'밤에 주로 게임하지만 이어폰 씁니다. 낮에는 조용해요.',
-    icon:'🌤️', sleep:'late', clean:'normal', noise:'tolerant',
+    icon:'🌤️', 
+    sleep:'late', clean:'normal', noise:'tolerant', smoking:'no', guest:'rare',
+    matchScore: null,
     pos:{ left:'65%', top:'58%' },
   },
 ];
-
 /* ====================================================
    샘플 데이터 — 익명 게시글
 ==================================================== */
@@ -496,23 +513,35 @@ function submitPost(e) {
 ==================================================== */
 function renderRoomiesGrid(data = ROOMIES_DATA) {
   document.getElementById('roomiesGrid').innerHTML = data.length
-    ? data.map(r => `
-        <div class="roomie-card-full" onclick="openRoomieDetail(${r.id})">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <div class="avatar-lg">${r.icon}</div>
-            <div>
-              <div style="font-weight:600;font-size:14px">${r.name}</div>
-              <div style="font-size:12px;color:var(--secondary)">${r.location}</div>
+    ? data.map(r => { // 📍 중괄호 { 시작
+        // 1. 점수가 null이 아닐 때만 출력할 텍스트 포맷 세팅 (desc 아래 들어갈 삼항 연산자)
+        const scoreLine = (r.matchScore !== null)
+          ? `<div style="margin-top: 10px; font-size: 13px; font-weight: 700; color: #22c55e;">
+               궁합 점수 : ${r.matchScore}점
+             </div>`
+          : '';
+
+        // 2. HTML 반환 (return과 백틱 `` 장착)
+        return `
+          <div class="roomie-card-full" onclick="openRoomieDetail(${r.id})">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <div class="avatar-lg">${r.icon}</div>
+              <div>
+                <div style="font-weight:600;font-size:14px">${r.name}</div>
+                <div style="font-size:12px;color:var(--secondary)">${r.location}</div>
+              </div>
             </div>
+            <div style="font-size:15px;font-weight:700;margin-bottom:8px">월 ${r.budget}만원</div>
+            <div class="roomie-tags">${renderTags(r.tags)}</div>
+            <p style="font-size:12px;color:var(--secondary);margin-top:10px;
+                      overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
+              ${r.desc}
+            </p>
+            
+            ${scoreLine}
           </div>
-          <div style="font-size:15px;font-weight:700;margin-bottom:8px">월 ${r.budget}만원</div>
-          <div class="roomie-tags">${renderTags(r.tags)}</div>
-          <p style="font-size:12px;color:var(--secondary);margin-top:10px;
-                    overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
-            ${r.desc}
-          </p>
-        </div>
-      `).join('')
+        `;
+      }).join('') // 📍 중괄호 } 끝
     : `<p class="text-muted" style="grid-column:1/-1;padding:40px 0;text-align:center">
          조건에 맞는 룸메이트가 없습니다
        </p>`;
@@ -659,6 +688,37 @@ function saveCompatProfile() {
   document.getElementById('compatBadge').textContent = emoji;
   document.getElementById('compatType').textContent  = type;
   document.getElementById('compatDesc').textContent  = desc;
+
+   /* ====================================================
+     📍 [추가 Block 3] saveCompatProfile() 함수 내부에 삽입할 연산 로직
+     ==================================================== */
+  // 3-1. 내 성향 데이터 변수 획득
+  const smoking = document.getElementById('compatSmoking').value;
+  const guest   = document.getElementById('compatGuest').value;
+
+  // 3-2. 전역 샘플 데이터 풀을 순회하며 5차원 L2-distance 연산 진행
+  ROOMIES_DATA.forEach(roomie => {
+    let distanceSquared = 0;
+
+    // 각 차원별 거리 제곱 합산 (Mapping Table 거치기)
+    distanceSquared += Math.pow(COMPAT_SCORE_MAP.sleep[sleep] - COMPAT_SCORE_MAP.sleep[roomie.sleep], 2);
+    distanceSquared += Math.pow(COMPAT_SCORE_MAP.clean[clean] - COMPAT_SCORE_MAP.clean[roomie.clean], 2);
+    distanceSquared += Math.pow(COMPAT_SCORE_MAP.noise[noise] - COMPAT_SCORE_MAP.noise[roomie.noise], 2);
+    distanceSquared += Math.pow(COMPAT_SCORE_MAP.guest[guest] - COMPAT_SCORE_MAP.guest[roomie.guest], 2);
+    distanceSquared += Math.pow(COMPAT_SCORE_MAP.smoking[smoking] - COMPAT_SCORE_MAP.smoking[roomie.smoking], 2);
+
+    // 10점 만점 정규화 환산 공식 (Max Distance^2 = 20)
+    let score = (1 - (distanceSquared / 20)) * 10.0;
+    
+    // 소수점 첫째 자리까지 깔끔하게 반올림하여 주입 (null 상태 탈출)
+    roomie.matchScore = Math.round(score * 10) / 10;
+  });
+
+  // 3-3. 메인 화면에 뿌려지기 전에 점수가 높은 순서대로 데이터 풀 정렬(Order By)
+  ROOMIES_DATA.sort((a, b) => b.matchScore - a.matchScore);
+
+  // 3-4. 정렬된 최신 점수 판을 들고 메인 그리드 즉시 새로고침 호출
+  renderRoomiesGrid(ROOMIES_DATA);
   document.getElementById('compatResults').classList.remove('hidden');
 
   // 2초 후 룸메이트 페이지로 이동
