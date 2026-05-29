@@ -32,46 +32,56 @@ const state = {
 ==================================================== */
 const TAKEON_DATA = [
   {
-    id:1, area:'신촌', type:'원룸',
-    deposit:500, rent:45,
+    id:1, category:'room', area:'신촌', type:'원룸',
+    deposit:500, rent:45, fee:null, period:'',
     date:'2026-06-15',
     desc:'신촌역 도보 5분, 풀옵션, 남향, 조용한 골목. 가구 일부 인계 가능합니다.',
     emoji:'🏠',
     user:{ name:'익명의 고양이', icon:'🐱' },
-    tags:['풀옵션','남향','역세권'],
+    tags:['방 인수인계','풀옵션','남향','역세권'],
     pos:{ left:'28%', top:'38%' },
   },
   {
-    id:2, area:'이대', type:'투룸',
-    deposit:1000, rent:75,
+    id:2, category:'room', area:'이대', type:'투룸',
+    deposit:1000, rent:75, fee:null, period:'',
     date:'2026-07-01',
     desc:'이대역 3분, 투룸 구조, 욕실 2개. 에어컨 포함 가전 전체 인계합니다.',
     emoji:'🏡',
     user:{ name:'익명의 토끼', icon:'🐰' },
-    tags:['투룸','욕실2개','가전포함'],
+    tags:['방 인수인계','투룸','욕실2개','가전포함'],
     pos:{ left:'54%', top:'32%' },
   },
   {
-    id:3, area:'홍대', type:'오피스텔',
-    deposit:300, rent:60,
+    id:3, category:'room', area:'대흥', type:'오피스텔',
+    deposit:300, rent:60, fee:null, period:'',
     date:'2026-06-30',
-    desc:'홍대입구역 바로 앞, 신축, 관리비 5만원, 헬스장 포함.',
+    desc:'대흥역과 서강대가 가까운 신축 오피스텔. 관리비 5만원, 헬스장 포함.',
     emoji:'🏢',
     user:{ name:'익명의 여우', icon:'🦊' },
-    tags:['신축','헬스장','역세권'],
+    tags:['방 인수인계','신축','헬스장','역세권'],
     pos:{ left:'22%', top:'58%' },
   },
   {
-    id:4, area:'마포', type:'원룸',
-    deposit:200, rent:40,
-    date:'2026-07-15',
-    desc:'서강대 정문 도보 3분, 조용한 주택가, 장기 거주자 우대.',
-    emoji:'🏘️',
+    id:4, category:'rental', area:'신촌', type:'가전제품',
+    deposit:0, rent:0, fee:2, period:'3개월',
+    date:'2026-07-10',
+    desc:'교환학생 기간 동안 전자레인지와 에어프라이어를 대여합니다. 직접 픽업 가능하신 분 우대.',
+    emoji:'📦',
     user:{ name:'익명의 다람쥐', icon:'🐿️' },
-    tags:['서강대근처','조용함','장기우대'],
+    tags:['물건 대여','전자레인지','에어프라이어','단기대여'],
     pos:{ left:'62%', top:'54%' },
   },
-];
+  {
+    id:5, category:'rental', area:'대흥', type:'생활용품',
+    deposit:0, rent:0, fee:1, period:'1개월',
+    date:'2026-06-25',
+    desc:'장기 여행으로 비우는 동안 청소기와 건조대를 대여합니다. 사용 후 깨끗하게 반납해주세요.',
+    emoji:'🧺',
+    user:{ name:'익명의 수달', icon:'🦦' },
+    tags:['물건 대여','청소기','건조대','생활용품'],
+    pos:{ left:'48%', top:'50%' },
+  },
+]
 
 /* ====================================================
    샘플 데이터 — 룸메이트 구인
@@ -85,7 +95,7 @@ const ROOMIES_DATA = [
     desc:'서강대 22학번입니다. 조용하고 깔끔하게 지내실 분 구해요.',
     icon:'🐋', 
     sleep:'normal', clean:'very', noise:'sensitive', smoking:'no', guest:'rare', // 성향 5개
-    matchScore: null, // 초기 진입 시 숨김 처리용 플래그
+    mbti:'ISTJ', matchScore: null, // 초기 진입 시 숨김 처리용 플래그
     pos:{ left:'60%', top:'52%' },
   },
   {
@@ -95,7 +105,7 @@ const ROOMIES_DATA = [
     desc:'취준 중이라 집에 자주 있어요. 서로 존중하며 지내요.',
     icon:'🍏', 
     sleep:'late', clean:'normal', noise:'normal', smoking:'no', guest:'sometimes',
-    matchScore: null,
+    mbti:'INFP', matchScore: null,
     pos:{ left:'26%', top:'36%' },
   },
   {
@@ -105,7 +115,7 @@ const ROOMIES_DATA = [
     desc:'대학원생이라 평일엔 늦게 들어와요. 주말엔 활발히 지내요.',
     icon:'💜', 
     sleep:'late', clean:'normal', noise:'normal', smoking:'no', guest:'often',
-    matchScore: null,
+    mbti:'ENFJ', matchScore: null,
     pos:{ left:'52%', top:'30%' },
   },
   {
@@ -115,7 +125,7 @@ const ROOMIES_DATA = [
     desc:'밤에 주로 게임하지만 이어폰 씁니다. 낮에는 조용해요.',
     icon:'🌤️', 
     sleep:'late', clean:'normal', noise:'tolerant', smoking:'no', guest:'rare',
-    matchScore: null,
+    mbti:'ESTP', matchScore: null,
     pos:{ left:'65%', top:'58%' },
   },
 ];
@@ -179,6 +189,18 @@ function renderTags(tags) {
   return tags.map(t => `<span class="tag">${t}</span>`).join('');
 }
 
+function getHandoverLabel(item) {
+  return item.category === 'rental' ? '물건 대여' : '방 인수인계';
+}
+
+function getHandoverPrice(item) {
+  if (item.category === 'rental') {
+    const fee = item.fee || item.deposit || 0;
+    return `대여비 ${fee}만 / ${item.period || '기간 협의'}`;
+  }
+  return `보증 ${item.deposit}만 / 월 ${item.rent}만`;
+}
+
 /* ====================================================
    해시 기반 페이지 라우터
    URL 해시(#map, #board 등)에 따라 페이지 전환
@@ -198,7 +220,8 @@ function navigateTo(page) {
 }
 
 function handleRoute() {
-  const page = location.hash.replace('#', '') || 'home';
+  let page = location.hash.replace('#', '') || 'home';
+  if (page === 'takeon') page = 'handover';
   navigateTo(page);
 }
 
@@ -314,7 +337,7 @@ function loginUser(user) {
   document.getElementById('heroTitle').textContent = `안녕하세요, ${user.nickname}님!`;
   document.getElementById('heroSubtitle').textContent = '오늘도 좋은 자취 생활 되세요 🏠';
   document.getElementById('heroBtns').innerHTML = `
-    <button class="btn-primary-lg" onclick="location.hash='takeon'">인수인계 보기</button>
+    <button class="btn-primary-lg" onclick="location.hash='handover'">Handover 보기</button>
     <button class="btn-outline-lg" onclick="location.hash='roomies'">룸메 찾기</button>
   `;
 
@@ -346,11 +369,12 @@ function logout() {
 function renderTakeonPreview() {
   document.getElementById('takeonPreview').innerHTML =
     TAKEON_DATA.slice(0, 4).map(item => `
-      <div class="takeon-card" onclick="location.hash='takeon'">
+      <div class="takeon-card" onclick="location.hash='handover'">
         <div class="takeon-card-img">${item.emoji}</div>
         <div class="takeon-card-body">
           <div class="takeon-card-title">${item.area} ${item.type}</div>
-          <div class="takeon-card-price">보증 ${item.deposit}만 / 월 ${item.rent}만</div>
+          <div class="takeon-card-price">${getHandoverPrice(item)}</div>
+          <div class="roomie-tags" style="margin-top:6px">${renderTags([getHandoverLabel(item)])}</div>
           <div class="takeon-card-user">
             <div class="avatar">${item.user.icon}</div>
             <span style="font-size:11px;color:var(--muted)">${item.user.name}</span>
@@ -417,9 +441,9 @@ function renderMapList() {
   const data = state.mapMode === 'properties' ? TAKEON_DATA : ROOMIES_DATA;
   document.getElementById('mapList').innerHTML = data.map(item =>
     state.mapMode === 'properties'
-      ? `<div class="sidebar-card" onclick="location.hash='takeon'">
+      ? `<div class="sidebar-card" onclick="location.hash='handover'">
            <div class="sidebar-card-title">${item.area} ${item.type}</div>
-           <div class="sidebar-card-price">보증 ${item.deposit}만 / 월 ${item.rent}만</div>
+           <div class="sidebar-card-price">${getHandoverPrice(item)}</div>
            <div class="sidebar-card-tags">${renderTags(item.tags)}</div>
          </div>`
       : `<div class="sidebar-card" onclick="location.hash='roomies'">
@@ -441,7 +465,7 @@ function renderMapMarkers() {
   const data = state.mapMode === 'properties' ? TAKEON_DATA : ROOMIES_DATA;
   document.getElementById('mapMarkers').innerHTML = data.map(item => {
     const label = state.mapMode === 'properties'
-      ? `${item.area} ${item.rent}만`
+      ? (item.category === 'rental' ? `${item.area} 대여` : `${item.area} ${item.rent}만`)
       : item.name;
     return `<div class="map-marker" style="left:${item.pos.left};top:${item.pos.top}">${label}</div>`;
   }).join('');
@@ -559,7 +583,7 @@ function applyRoomiesFilter() {
   if (gender) result = result.filter(r => r.gender === gender);
   if (price)  result = result.filter(r => r.budget <= parseInt(price));
   if (style)  result = result.filter(r => r.style === style);
-  filtered.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+  result.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
   renderRoomiesGrid(result);
 }
 
@@ -578,7 +602,7 @@ function showCompatibility() {
 }
 
 /* ====================================================
-   TAKE ON — 인수인계 카드 그리드 렌더링
+   HANDOVER — 인수인계 카드 그리드 렌더링
 ==================================================== */
 function renderTakeonGrid(data = TAKEON_DATA) {
   document.getElementById('takeonGrid').innerHTML = data.map(item => `
@@ -586,7 +610,7 @@ function renderTakeonGrid(data = TAKEON_DATA) {
       <div class="takeon-full-card-img">${item.emoji}</div>
       <div class="takeon-full-card-body">
         <div class="takeon-full-card-title">${item.area} ${item.type}</div>
-        <div class="takeon-full-card-price">보증 ${item.deposit}만 / 월 ${item.rent}만원</div>
+        <div class="takeon-full-card-price">${getHandoverPrice(item)}</div>
         <div class="takeon-full-card-detail">${item.desc}</div>
         <div class="roomie-tags" style="margin-bottom:10px">${renderTags(item.tags)}</div>
         <div class="takeon-full-card-footer">
@@ -603,9 +627,11 @@ function renderTakeonGrid(data = TAKEON_DATA) {
 
 // 지역·방 종류 필터
 function applyTakeonFilter() {
+  const category = document.getElementById('takeonCategory').value;
   const area = document.getElementById('takeonArea').value;
   const type = document.getElementById('takeonType').value;
   let result = [...TAKEON_DATA];
+  if (category) result = result.filter(i => i.category === category);
   if (area) result = result.filter(i => i.area === area);
   if (type) result = result.filter(i => i.type === type);
   renderTakeonGrid(result);
@@ -616,7 +642,7 @@ function openTakeonDetail(id) {
   requireLogin(() => {
     const item = TAKEON_DATA.find(x => x.id === id);
     if (!item) return;
-    alert(`[${item.area} ${item.type}]\n보증금: ${item.deposit}만원 / 월세: ${item.rent}만원\n인계일: ${item.date}\n\n${item.desc}`);
+    alert(`[${getHandoverLabel(item)}] ${item.area} ${item.type}\n${getHandoverPrice(item)}\n희망일: ${item.date}\n\n${item.desc}`);
   });
 }
 
@@ -630,15 +656,18 @@ function submitTakeon(e) {
   e.preventDefault();
   const newItem = {
     id:      TAKEON_DATA.length + 1,
+    category: document.getElementById('newTakeonCategory').value,
     area:    document.getElementById('newTakeonArea').value,
     type:    document.getElementById('newTakeonType').value,
-    deposit: parseInt(document.getElementById('newTakeonDeposit').value),
-    rent:    parseInt(document.getElementById('newTakeonRent').value),
+    deposit: parseInt(document.getElementById('newTakeonDeposit').value) || 0,
+    rent:    parseInt(document.getElementById('newTakeonRent').value) || 0,
+    fee:     parseInt(document.getElementById('newTakeonDeposit').value) || 0,
+    period:  document.getElementById('newTakeonPeriod').value || '기간 협의',
     date:    document.getElementById('newTakeonDate').value,
     desc:    document.getElementById('newTakeonDesc').value || '상세 내용 없음',
-    emoji:   '🏠',
+    emoji:   document.getElementById('newTakeonCategory').value === 'rental' ? '📦' : '🏠',
     user:    { name: state.user.nickname, icon: '👤' },
-    tags:    [document.getElementById('newTakeonArea').value, document.getElementById('newTakeonType').value],
+    tags:    [document.getElementById('newTakeonCategory').value === 'rental' ? '물건 대여' : '방 인수인계', document.getElementById('newTakeonArea').value, document.getElementById('newTakeonType').value],
     pos:     { left: '45%', top: '45%' },
   };
   TAKEON_DATA.unshift(newItem);
@@ -664,64 +693,82 @@ function switchTab(btn, tabId) {
    MY PAGE SIDEBAR — 룸메궁합 분석
    취침시간·청결도·소음민감도 조합으로 룸메 유형 분류
 ==================================================== */
-function saveCompatProfile() {
-  const sleep  = document.getElementById('compatSleep').value;
-  const clean  = document.getElementById('compatClean').value;
-  const noise  = document.getElementById('compatNoise').value;
 
-  // 간단 규칙 기반 유형 분류
+function calcMbtiScore(myMbti, targetMbti) {
+  if (!myMbti || !targetMbti || myMbti.length !== 4 || targetMbti.length !== 4) {
+    return 0;
+  }
+
+  let matchCount = 0;
+
+  for (let i = 0; i < 4; i++) {
+    if (myMbti[i] === targetMbti[i]) {
+      matchCount++;
+    }
+  }
+
+  return (matchCount / 4) * 10;
+}
+
+function saveCompatProfile() {
+  const sleep = document.getElementById('compatSleep').value;
+  const clean = document.getElementById('compatClean').value;
+  const noise = document.getElementById('compatNoise').value;
+  const smoking = document.getElementById('compatSmoking').value;
+  const guest = document.getElementById('compatGuest').value;
+
+  const mbti =
+    document.getElementById('compatEI').value +
+    document.getElementById('compatNS').value +
+    document.getElementById('compatTF').value +
+    document.getElementById('compatPJ').value;
+
   let emoji, type, desc;
+
   if (clean === 'very' && noise === 'sensitive') {
-    emoji = '✨'; type = '청결 민감형';
-    desc  = '깨끗하고 조용한 환경을 중시해요. 비슷한 성향의 룸메와 최고의 궁합!';
+    emoji = '✨';
+    type = '청결 민감형';
+    desc = '깨끗하고 조용한 환경을 중시해요. 비슷한 성향의 룸메와 최고의 궁합!';
   } else if (sleep === 'late' && noise === 'tolerant') {
-    emoji = '🌙'; type = '자유로운 밤형';
-    desc  = '늦게 자고 소음에 여유로워요. 활발한 룸메와도 잘 어울려요.';
+    emoji = '🌙';
+    type = '자유로운 밤형';
+    desc = '늦게 자고 소음에 여유로워요. 활발한 룸메와도 잘 어울려요.';
   } else if (sleep === 'early' && clean === 'very') {
-    emoji = '☀️'; type = '규칙적 깔끔형';
-    desc  = '일찍 자고 깔끔함을 선호해요. 규칙적인 생활의 룸메와 잘 맞아요.';
+    emoji = '☀️';
+    type = '규칙적 깔끔형';
+    desc = '일찍 자고 깔끔함을 선호해요. 규칙적인 생활의 룸메와 잘 맞아요.';
   } else {
-    emoji = '⚖️'; type = '균형 조화형';
-    desc  = '다양한 성향과 두루 잘 어울리는 유연한 타입이에요.';
+    emoji = '⚖️';
+    type = '균형 조화형';
+    desc = '다양한 성향과 두루 잘 어울리는 유연한 타입이에요.';
   }
 
   document.getElementById('compatBadge').textContent = emoji;
-  document.getElementById('compatType').textContent  = type;
-  document.getElementById('compatDesc').textContent  = desc;
+  document.getElementById('compatType').textContent = type;
+  document.getElementById('compatDesc').textContent = desc;
 
-   /* ====================================================
-     📍 [추가 Block 3] saveCompatProfile() 함수 내부에 삽입할 연산 로직
-     ==================================================== */
-  // 3-1. 내 성향 데이터 변수 획득
-  const smoking = document.getElementById('compatSmoking').value;
-  const guest   = document.getElementById('compatGuest').value;
-
-  // 3-2. 전역 샘플 데이터 풀을 순회하며 5차원 L2-distance 연산 진행
   ROOMIES_DATA.forEach(roomie => {
     let distanceSquared = 0;
 
-    // 각 차원별 거리 제곱 합산 (Mapping Table 거치기)
     distanceSquared += Math.pow(COMPAT_SCORE_MAP.sleep[sleep] - COMPAT_SCORE_MAP.sleep[roomie.sleep], 2);
     distanceSquared += Math.pow(COMPAT_SCORE_MAP.clean[clean] - COMPAT_SCORE_MAP.clean[roomie.clean], 2);
     distanceSquared += Math.pow(COMPAT_SCORE_MAP.noise[noise] - COMPAT_SCORE_MAP.noise[roomie.noise], 2);
     distanceSquared += Math.pow(COMPAT_SCORE_MAP.guest[guest] - COMPAT_SCORE_MAP.guest[roomie.guest], 2);
     distanceSquared += Math.pow(COMPAT_SCORE_MAP.smoking[smoking] - COMPAT_SCORE_MAP.smoking[roomie.smoking], 2);
 
-    // 10점 만점 정규화 환산 공식 (Max Distance^2 = 20)
-    let score = (1 - (distanceSquared / 20)) * 10.0;
-    
-    // 소수점 첫째 자리까지 깔끔하게 반올림하여 주입 (null 상태 탈출)
-    roomie.matchScore = Math.round(score * 10) / 10;
+    let lifestyleScore = (1 - (distanceSquared / 20)) * 10.0;
+    let mbtiScore = calcMbtiScore(mbti, roomie.mbti);
+
+    let finalScore = lifestyleScore * 0.7 + mbtiScore * 0.3;
+
+    roomie.matchScore = Math.round(finalScore * 10) / 10;
   });
 
-  // 3-3. 메인 화면에 뿌려지기 전에 점수가 높은 순서대로 데이터 풀 정렬(Order By)
   ROOMIES_DATA.sort((a, b) => b.matchScore - a.matchScore);
 
-  // 3-4. 정렬된 최신 점수 판을 들고 메인 그리드 즉시 새로고침 호출
   renderRoomiesGrid(ROOMIES_DATA);
   document.getElementById('compatResults').classList.remove('hidden');
 
-  // 2초 후 룸메이트 페이지로 이동
   setTimeout(() => {
     closeSidebar();
     location.hash = 'roomies';
